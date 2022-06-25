@@ -1,3 +1,10 @@
+defmodule Mix.Tasks.Compile.Yamecab do
+  def run(_args) do
+    {result, _errcode} = System.cmd("make", [], stderr_to_stdout: true)
+    IO.binwrite(result)
+  end
+end
+
 defmodule YAMeCab.MixProject do
   use Mix.Project
 
@@ -6,6 +13,7 @@ defmodule YAMeCab.MixProject do
       app: :yamecab,
       version: "0.1.0",
       elixir: "~> 1.13",
+      compilers: [:yamecab] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
