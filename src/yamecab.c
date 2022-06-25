@@ -10,6 +10,7 @@
 
 typedef struct {
     ErlDrvPort port;
+    mecab_model_t *model;
 } yamecab_data;
 
 char foo(char arg) {
@@ -18,13 +19,22 @@ char foo(char arg) {
 
 static ErlDrvData yamecab_start(ErlDrvPort port, char *buff)
 {
+    mecab_model_t *model;
+    model = mecab_model_new2("");
+    if(!model) {
+      return ERL_DRV_ERROR_GENERAL;
+    }
+
     yamecab_data* d = (yamecab_data*)driver_alloc(sizeof(yamecab_data));
     d->port = port;
+    d->model = model;
     return (ErlDrvData)d;
 }
 
 static void yamecab_stop(ErlDrvData handle)
 {
+    yamecab_data* d = (yamecab_data*)handle;
+    if(d->model) mecab_model_destroy(d->model);
     driver_free((char*)handle);
 }
 
@@ -34,16 +44,23 @@ static void yamecab_output(ErlDrvData handle, char *buff,
     yamecab_data* d = (yamecab_data*)handle;
 
     mecab_t *mecab;
+    mecab_lattice_t *lattice;
     const mecab_node_t *node;
     char *result;
     int i;
     size_t len;
 
-    mecab = mecab_new2("");
+    mecab = mecab_model_new_tagger(d->model);
     CHECK(mecab);
 
-    result = mecab_sparse_tostr(mecab, buff);
-    CHECK(result)
+    lattice = mecab_model_new_lattice(d->model);
+    CHECK(lattice);
+
+    mecab_lattice_set_sentence(lattice, buff);
+    mecab_parse_lattice(mecab, lattice);
+
+    result = mecab_lattice_tostr(lattice);
+    CHECK(result);
 
     driver_output(d->port, result, strlen(result));
 }
