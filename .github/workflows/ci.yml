@@ -32,8 +32,44 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-mix-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           path: deps
 
-      - name: Install Dependencies
-        run: sudo apt-get install -y gcc libc6-dev make mecab libmecab-dev mecab-ipadic-utf8
+      - uses: actions/cache@v3
+        id: cache-mecab
+        with:
+          path: |
+            ${{ github.workspace }}/mecab
+          key: ${{ runner.os }}-mecab
+
+      - name: setup mecab environments
+        run: |
+          echo "MECAB_PREFIX=$GITHUB_WORKSPACE/mecab" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/mecab/lib" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/mecab/bin" >> "$GITHUB_PATH"
+
+      - name: Instal Dependencies
+        run: sudo apt-get install -y clang libc6-dev make
+
+      - name: Install MeCab
+        if: steps.cache-mecab.outputs.cache-hit != 'true'
+        run: |
+          wget --quiet -O - 'https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7cENtOXlicTFaRUE' | tar xzf -
+          cd mecab-0.996
+          ./configure --enable-utf8-only --prefix="$MECAB_PREFIX"
+          make clean
+          make
+          make check
+          sudo make install
+          sudo ldconfig
+          cd ..
+          wget --quiet -O - 'https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM' | tar xzf -
+          cd mecab-ipadic-2.7.0-20070801
+          ./configure --with-charset=utf8 --prefix="$MECAB_PREFIX"
+          make clean
+          make
+          make check
+          sudo make install
+
+      - name: ldconfig
+        run: sudo ldconfig
 
       - name: Install Mix Dependencies
         if: steps.mix-cache.outputs.cache-hit != 'true'
@@ -43,4 +79,5 @@ jobs:
           mix deps.get
 
       - name: Run Tests
-        run: mix test --warnings-as-errors
+        run: |
+          mix test --warnings-as-errors
