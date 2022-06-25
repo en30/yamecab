@@ -3,12 +3,14 @@
 #include <mecab.h>
 #include <string.h>
 
-#define CHECK(eval)                                           \
-  if (!eval)                                                  \
-  {                                                           \
-    fprintf(stderr, "Exception:%s\n", mecab_strerror(mecab)); \
-    mecab_destroy(mecab);                                     \
-    exit(1);                                                  \
+#define OUTPUT_ERROR_TUPLE(msg)                                            \
+  {                                                                        \
+    const char *message = msg;                                             \
+    ErlDrvTermData error[] = {                                             \
+        ERL_DRV_ATOM, atom_error,                                          \
+        ERL_DRV_BUF2BINARY, (ErlDrvTermData)message, strlen(message),      \
+        ERL_DRV_TUPLE, 2};                                                 \
+    erl_drv_output_term(d->port, error, sizeof(error) / sizeof(error[0])); \
   }
 
 typedef struct
@@ -17,6 +19,8 @@ typedef struct
   mecab_model_t *model;
 } yamecab_data;
 
+static ErlDrvTermData atom_ok;
+static ErlDrvTermData atom_error;
 static ErlDrvTermData atom_true;
 static ErlDrvTermData atom_false;
 static ErlDrvTermData atom_surface;
@@ -36,7 +40,7 @@ static ErlDrvTermData atom_wcost;
 static ErlDrvTermData atom_cost;
 static size_t map_size = 44;
 
-static ErlDrvTermData stat_atom(unsigned char stat) 
+static ErlDrvTermData stat_atom(unsigned char stat)
 {
   switch (stat)
   {
@@ -58,6 +62,7 @@ static void write_result(ErlDrvTermData *x, mecab_lattice_t *lattice, size_t len
 {
   const mecab_node_t *node = mecab_lattice_get_bos_node(lattice);
   int i = 0;
+  x[i++] = ERL_DRV_ATOM; x[i++] = atom_ok;
   for (; node; node = node->next)
   {
     x[i++] = ERL_DRV_ATOM; x[i++] = atom_surface;
@@ -94,6 +99,7 @@ static void write_result(ErlDrvTermData *x, mecab_lattice_t *lattice, size_t len
   }
   x[i++] = ERL_DRV_NIL;
   x[i++] = ERL_DRV_LIST; x[i++] = len + 1;
+  x[i++] = ERL_DRV_TUPLE; x[i++] = 2;
 }
 
 static ErlDrvData yamecab_start(ErlDrvPort port, char *buff)
@@ -129,10 +135,19 @@ static void yamecab_output(ErlDrvData handle, char *buff,
   ErlDrvTermData *result;
 
   mecab = mecab_model_new_tagger(d->model);
-  CHECK(mecab);
+  if (!mecab)
+  {
+    OUTPUT_ERROR_TUPLE("Could not create a tagger");
+    return;
+  }
 
   lattice = mecab_model_new_lattice(d->model);
-  CHECK(lattice);
+  if (!lattice)
+  {
+    OUTPUT_ERROR_TUPLE(mecab_lattice_strerror(lattice));
+    mecab_destroy(mecab);
+    return;
+  }
 
   mecab_lattice_set_sentence(lattice, buff);
   mecab_parse_lattice(mecab, lattice);
@@ -142,7 +157,7 @@ static void yamecab_output(ErlDrvData handle, char *buff,
   for (; node; node = node->next)
     len++;
 
-  const size_t result_len = 3 + map_size * len;
+  const size_t result_len = 7 + map_size * len;
   result = (ErlDrvTermData *)driver_alloc(sizeof(ErlDrvTermData) * result_len);
 
   write_result(result, lattice, len);
@@ -189,6 +204,8 @@ ErlDrvEntry yamecab_driver_entry = {
 
 DRIVER_INIT(yamecab) /* must match name in driver_entry */
 {
+  atom_ok = driver_mk_atom("ok");
+  atom_error = driver_mk_atom("error");
   atom_true = driver_mk_atom("true");
   atom_false = driver_mk_atom("false");
   atom_surface = driver_mk_atom("surface");

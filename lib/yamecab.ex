@@ -4,21 +4,22 @@ defmodule YAMeCab do
   """
 
   use GenServer
+  alias YAMeCab.ParseError
 
   # Client
   def start_link(_) do
     GenServer.start_link(__MODULE__, %{})
   end
 
-  @spec parse(pid(), binary()) :: list(YAMeCab.Node.t())
+  @spec parse(pid(), binary()) :: {:ok, list(YAMeCab.Node.t())} | {:error, ParseError.t()}
   @doc """
   Parse a given binary and returns nodes.
 
   ## Examples
 
       iex> {:ok, mecab} = YAMeCab.start_link([])
-      iex> YAMeCab.parse(mecab, "すもももももももものうち")
-      iex> |> Enum.map(fn n -> {n.surface, n.feature} end)
+      iex> {:ok, res} = YAMeCab.parse(mecab, "すもももももももものうち")
+      iex> Enum.map(res, fn n -> {n.surface, n.feature} end)
       [
         {"", "BOS/EOS,*,*,*,*,*,*,*,*"},
         {"すもも", "名詞,一般,*,*,*,*,すもも,スモモ,スモモ"},
@@ -41,8 +42,12 @@ defmodule YAMeCab do
   def init(state) do
     case load_library() do
       :ok ->
-        port = Port.open({:spawn_driver, "yamecab"}, [])
-        {:ok, Map.put(state, :port, port)}
+        try do
+          port = Port.open({:spawn_driver, "yamecab"}, [])
+          {:ok, Map.put(state, :port, port)}
+        rescue
+          e in RuntimeError -> {:stop, e.message}
+        end
 
       {:error, reason} ->
         {:stop, reason}
@@ -54,8 +59,11 @@ defmodule YAMeCab do
     Port.command(port, bin)
 
     receive do
-      res ->
-        {:reply, Enum.map(res, &struct!(YAMeCab.Node, &1)), state}
+      {:ok, res} ->
+        {:reply, {:ok, Enum.map(res, &struct!(YAMeCab.Node, &1))}, state}
+
+      {:error, message} ->
+        {:reply, {:error, ParseError.exception(message: message)}, state}
     end
   end
 
