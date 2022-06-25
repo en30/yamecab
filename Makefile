@@ -7,4 +7,4 @@ endif
 all: priv/yamecab.so
 
 priv/yamecab.so: src/yamecab.c
-	cc -fPIC -I$(ERL_INCLUDE_PATH) -dynamiclib -shared $(LDFLAGS) -lmecab -o $@  src/yamecab.c
+	cc -fPIC -I$(ERL_INCLUDE_PATH) -shared $(LDFLAGS) -lmecab -o $@  src/yamecab.c
