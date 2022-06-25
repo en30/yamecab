@@ -1,6 +1,6 @@
 # YAMeCab
 
-**TODO: Add description**
+Yet Another Elixir binding for [MeCab](https://taku910.github.io/mecab).
 
 ## Installation
 
