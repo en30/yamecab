@@ -10,6 +10,7 @@ defmodule YAMeCab do
     GenServer.start_link(__MODULE__, %{})
   end
 
+  @spec parse(pid(), binary()) :: list(YAMeCab.Node.t())
   @doc """
   Parse a given binary and returns nodes.
 
@@ -17,8 +18,18 @@ defmodule YAMeCab do
 
       iex> {:ok, mecab} = YAMeCab.start_link([])
       iex> YAMeCab.parse(mecab, "すもももももももものうち")
-      [["すもも", "名詞", "一般", "*", "*", "*", "*", "すもも", "スモモ", "スモモ"], ["も", "助詞", "係助詞", "*", "*", "*", "*", "も", "モ", "モ"], ["もも", "名詞", "一般", "*", "*", "*", "*", "もも", "モモ", "モモ"], ["も", "助詞", "係助詞", "*", "*", "*", "*", "も", "モ", "モ"], ["もも", "名詞", "一般", "*", "*", "*", "*", "もも", "モモ", "モモ"], ["の", "助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"], ["うち", "名詞", "非自立", "副詞可能", "*", "*", "*", "うち", "ウチ", "ウチ"], ["EOS"], [""]]
-
+      iex> |> Enum.map(fn n -> {n.surface, n.feature} end)
+      [
+        {"", "BOS/EOS,*,*,*,*,*,*,*,*"},
+        {"すもも", "名詞,一般,*,*,*,*,すもも,スモモ,スモモ"},
+        {"も", "助詞,係助詞,*,*,*,*,も,モ,モ"},
+        {"もも", "名詞,一般,*,*,*,*,もも,モモ,モモ"},
+        {"も", "助詞,係助詞,*,*,*,*,も,モ,モ"},
+        {"もも", "名詞,一般,*,*,*,*,もも,モモ,モモ"},
+        {"の", "助詞,連体化,*,*,*,*,の,ノ,ノ"},
+        {"うち", "名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ"},
+        {"", "BOS/EOS,*,*,*,*,*,*,*,*"}
+      ]
   """
   def parse(pid, bin) do
     GenServer.call(pid, {:parse, bin})
@@ -30,7 +41,7 @@ defmodule YAMeCab do
   def init(state) do
     case load_library() do
       :ok ->
-        port = Port.open({:spawn_driver, "yamecab"}, [:binary])
+        port = Port.open({:spawn_driver, "yamecab"}, [])
         {:ok, Map.put(state, :port, port)}
 
       {:error, reason} ->
@@ -43,13 +54,8 @@ defmodule YAMeCab do
     Port.command(port, bin)
 
     receive do
-      {^port, {:data, res}} ->
-        parsed =
-          res
-          |> String.split("\n")
-          |> Enum.map(&String.split(&1, ~r{[\t,]}))
-
-        {:reply, parsed, state}
+      res ->
+        {:reply, Enum.map(res, &struct!(YAMeCab.Node, &1)), state}
     end
   end
 
