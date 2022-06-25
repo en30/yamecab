@@ -26,4 +26,5 @@ yamecab-*.tar
 /tmp/
 
 priv/*.so
+priv/save.benchee
 
