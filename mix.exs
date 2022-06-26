@@ -43,11 +43,11 @@ defmodule Mix.Tasks.Compile.Yamecab do
   def run(_args) do
     File.mkdir("priv")
     {result, code} = System.cmd("make", [], stderr_to_stdout: true)
-    IO.binwrite(result)
 
     if code == 0 do
       {:ok, []}
     else
+      IO.binwrite(result)
       {:error, ["exit code #{code}"]}
     end
   end
