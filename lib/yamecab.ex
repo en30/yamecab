@@ -1,19 +1,25 @@
 defmodule YAMeCab do
-  @moduledoc """
-  Documentation for `YAMeCab`.
-  """
+  @external_resource "README.md"
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("<!-- MDOC !-->")
+             |> Enum.fetch!(1)
 
   use GenServer
+  alias YAMeCab.LoadError
   alias YAMeCab.ParseError
 
   # Client
-  def start_link(_) do
+  @doc """
+  Starts a new YAMeCab process. One YAMeCab process creates one MeCab model instance internally, which is subsequently reused.
+  """
+  def start_link(_options \\ []) do
     GenServer.start_link(__MODULE__, %{})
   end
 
   @spec parse(pid(), binary()) :: {:ok, list(YAMeCab.Node.t())} | {:error, ParseError.t()}
   @doc """
-  Parse a given binary and returns nodes.
+  Parses a given sentence and returns nodes.
 
   ## Examples
 
@@ -32,8 +38,8 @@ defmodule YAMeCab do
         {"", "BOS/EOS,*,*,*,*,*,*,*,*"}
       ]
   """
-  def parse(pid, bin) do
-    GenServer.call(pid, {:parse, bin})
+  def parse(pid, sentence) do
+    GenServer.call(pid, {:parse, sentence})
   end
 
   # Server
