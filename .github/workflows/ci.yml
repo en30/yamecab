@@ -78,6 +78,9 @@ jobs:
           mix local.hex --force
           mix deps.get
 
+      - name: lint
+        run: mix lint
+
       - name: Run Tests
         run: |
           mix test --warnings-as-errors

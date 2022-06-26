@@ -8,6 +8,7 @@ defmodule YAMeCab.MixProject do
       elixir: "~> 1.12",
       compilers: [:yamecab] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
+      aliases: aliases(),
       deps: deps()
     ]
   end
@@ -25,6 +26,15 @@ defmodule YAMeCab.MixProject do
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
       {:benchee, "~> 1.1", only: :dev}
+    ]
+  end
+
+  defp aliases do
+    [
+      lint: [
+        "format --check-formatted",
+        "compile --warnings-as-errors"
+      ]
     ]
   end
 end
