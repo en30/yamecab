@@ -112,6 +112,10 @@ static ErlDrvData yamecab_start(ErlDrvPort port, char *buff)
   }
 
   yamecab_data *d = (yamecab_data *)driver_alloc(sizeof(yamecab_data));
+  if (d == NULL)
+  {
+    return ERL_DRV_ERROR_GENERAL;
+  }
   d->port = driver_mk_port(port);
   d->model = model;
   return (ErlDrvData)d;
@@ -150,6 +154,14 @@ static void yamecab_output(ErlDrvData handle, char *buff,
   }
 
   char *sentence = driver_alloc(sizeof(char) * (bufflen + 1));
+  if (sentence == NULL)
+  {
+    OUTPUT_ERROR_TUPLE("Could not allocate memory");
+    mecab_destroy(mecab);
+    mecab_lattice_destroy(lattice);
+    return;
+  }
+
   strncpy(sentence, buff, bufflen);
   sentence[bufflen] = '\0';
   mecab_lattice_set_sentence(lattice, sentence);
@@ -162,12 +174,18 @@ static void yamecab_output(ErlDrvData handle, char *buff,
 
   const size_t result_len = 7 + map_size * len;
   result = (ErlDrvTermData *)driver_alloc(sizeof(ErlDrvTermData) * result_len);
-
-  write_result(result, lattice, len);
-  erl_drv_output_term(d->port, result, result_len);
+  if (result == NULL)
+  {
+    OUTPUT_ERROR_TUPLE("Could not allocate memory");
+  }
+  else
+  {
+    write_result(result, lattice, len);
+    erl_drv_output_term(d->port, result, result_len);
+    driver_free(result);
+  }
 
   driver_free(sentence);
-  driver_free(result);
   mecab_destroy(mecab);
   mecab_lattice_destroy(lattice);
 }
