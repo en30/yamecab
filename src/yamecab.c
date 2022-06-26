@@ -149,7 +149,10 @@ static void yamecab_output(ErlDrvData handle, char *buff,
     return;
   }
 
-  mecab_lattice_set_sentence(lattice, buff);
+  char *sentence = driver_alloc(sizeof(char) * (bufflen + 1));
+  strncpy(sentence, buff, bufflen);
+  sentence[bufflen] = '\0';
+  mecab_lattice_set_sentence(lattice, sentence);
   mecab_parse_lattice(mecab, lattice);
 
   const mecab_node_t *node = mecab_lattice_get_bos_node(lattice);
@@ -163,6 +166,7 @@ static void yamecab_output(ErlDrvData handle, char *buff,
   write_result(result, lattice, len);
   erl_drv_output_term(d->port, result, result_len);
 
+  driver_free(sentence);
   driver_free(result);
   mecab_destroy(mecab);
   mecab_lattice_destroy(lattice);
