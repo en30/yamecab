@@ -79,8 +79,7 @@ defmodule YAMeCab do
         :ok
 
       {:error, error} ->
-        IO.puts("Can't load yamecab library: #{inspect(:erl_ddll.format_error(error))}")
-        {:error, error}
+        {:error, LoadError.exception(message: "Can't load yamecab library: #{inspect(:erl_ddll.format_error(error))}")}
     end
   end
 end
