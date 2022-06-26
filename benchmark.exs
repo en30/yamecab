@@ -13,5 +13,5 @@ Benchee.run(%{
   time: 10,
   memory_time: 2,
   load: "./priv/save.benchee",
-  save: [path: "./priv/save.benchee", tag: "port-driver-process-reuse-model-term-struct-error"]
+  save: [path: "./priv/save.benchee", tag: "port-level-locking"]
 )
